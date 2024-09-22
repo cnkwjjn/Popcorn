@@ -72,9 +72,14 @@ void AsEngine::Draw_Frame(HDC hdc, RECT &paint_area)
 //------------------------------------------------------------------------------------------------------------
 int AsEngine::On_Key_Down(EKey_Type key_type)
 {
+	if (Platform.Get_State() == EPS_Meltdown, Platform.Get_State() == EPS_Roll_In )
+		return 0;
+
 	switch (key_type)
 	{
 	case EKT_Left:
+
+
 		Platform.X_Pos -= Platform.X_Step;
 
 		if (Platform.X_Pos <= AsConfig::Border_X_Offset)

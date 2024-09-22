@@ -13,6 +13,24 @@ AFalling_Letter::AFalling_Letter(EBrick_Type brick_type, ELetter_Type letter_typ
 
 	Prev_Letter_Cell = Letter_Cell;
 }
+
+//------------------------------------------------------------------------------------------------------------
+void AFalling_Letter::Draw(HDC hdc, RECT& paint_area)
+{
+	RECT intersection_rect;
+
+	// 1. Очищаем фон
+	if (IntersectRect(&intersection_rect, &paint_area, &Prev_Letter_Cell))
+	{
+		SelectObject(hdc, AsConfig::BG_Pen);
+		SelectObject(hdc, AsConfig::BG_Brush);
+
+		Rectangle(hdc, Prev_Letter_Cell.left, Prev_Letter_Cell.top, Prev_Letter_Cell.right, Prev_Letter_Cell.bottom);
+	}
+
+	if (IntersectRect(&intersection_rect, &paint_area, &Letter_Cell))
+		Draw_Brick_Letter(hdc);
+}
 //------------------------------------------------------------------------------------------------------------
 void AFalling_Letter::Act()
 {
@@ -31,23 +49,7 @@ void AFalling_Letter::Act()
 	InvalidateRect(AsConfig::Hwnd, &Prev_Letter_Cell, FALSE);
 	InvalidateRect(AsConfig::Hwnd, &Letter_Cell, FALSE);
 }
-//------------------------------------------------------------------------------------------------------------
-void AFalling_Letter::Draw(HDC hdc, RECT &paint_area)
-{
-	RECT intersection_rect;
 
-	// 1. Очищаем фон
-	if (IntersectRect(&intersection_rect, &paint_area, &Prev_Letter_Cell) )
-	{
-		SelectObject(hdc, AsConfig::BG_Pen);
-		SelectObject(hdc, AsConfig::BG_Brush);
-
-		Rectangle(hdc, Prev_Letter_Cell.left, Prev_Letter_Cell.top, Prev_Letter_Cell.right, Prev_Letter_Cell.bottom);
-	}
-
-	if (IntersectRect(&intersection_rect, &paint_area, &Letter_Cell) )
-		Draw_Brick_Letter(hdc);
-}
 //------------------------------------------------------------------------------------------------------------
 bool AFalling_Letter::Is_Finished()
 {
@@ -311,35 +313,25 @@ void ALevel::Set_Current_Level(char level[AsConfig::Level_Height][AsConfig::Leve
 //------------------------------------------------------------------------------------------------------------
 void ALevel::Act()
 {
+	Act_Object((AGraphics_Objects**)Active_Bricks, AsConfig::Max_Active_Bricks_Count);
+	Act_Object((AGraphics_Objects**)Falling_Letters, AsConfig::Max_Falling_Letters_Count);
+}
+//------------------------------------------------------------------------------------------------------------
+void ALevel::Act_Object(AGraphics_Objects** graphics_obj_array, int max_obj_count)
+{
 	int i;
 
-	for (i = 0; i < AsConfig::Max_Active_Bricks_Count; i++)
+	for (i = 0; i < max_obj_count; i++)
 	{
-		if (Active_Bricks[i] != 0)
+		if (graphics_obj_array[i] != 0)
 		{
-			Active_Bricks[i]->Act();
+			graphics_obj_array[i]->Act();
 
-			if (Active_Bricks[i]->Is_Finished() )
+			if (graphics_obj_array[i]->Is_Finished())
 			{
-				delete Active_Bricks[i];
-				Active_Bricks[i] = 0;
-				--Active_Bricks_Count;
-			}
-		}
-	}
-
-	//!!! Копия логики!
-	for (i = 0; i < AsConfig::Max_Falling_Letters_Count; i++)
-	{
-		if (Falling_Letters[i] != 0)
-		{
-			Falling_Letters[i]->Act();
-
-			if (Falling_Letters[i]->Is_Finished() )
-			{
-				delete Falling_Letters[i];
-				Falling_Letters[i] = 0;
-				--Falling_Letters_Count;
+				delete graphics_obj_array[i];
+				graphics_obj_array[i] = 0;
+				--graphics_obj_array;
 			}
 		}
 	}
@@ -349,26 +341,37 @@ void ALevel::Draw(HDC hdc, RECT &paint_area)
 {// Вывод всех кирпичей уровня
 
 	int i, j;
-	RECT intersection_rect;
+	RECT intersection_rect, brick_rect;
 
 	if (IntersectRect(&intersection_rect, &paint_area, &Level_Rect) )
 	{
 		for (i = 0; i < AsConfig::Level_Height; i++)
 			for (j = 0; j < AsConfig::Level_Width; j++)
-				Draw_Brick(hdc, AsConfig::Level_X_Offset + j * AsConfig::Cell_Width, AsConfig::Level_Y_Offset + i * AsConfig::Cell_Height, (EBrick_Type)Current_Level[i][j]);
+			{
+				brick_rect.left = (AsConfig::Level_X_Offset + j * AsConfig::Cell_Width) * AsConfig::Global_Scale;
+				brick_rect.top = (AsConfig::Level_Y_Offset + i * AsConfig::Cell_Height) * AsConfig::Global_Scale;
+				brick_rect.right = brick_rect.left + AsConfig::Brick_Width * AsConfig::Global_Scale;
+				brick_rect.bottom = brick_rect.top + AsConfig::Brick_Height * AsConfig::Global_Scale;
 
-		for (i = 0; i < AsConfig::Max_Active_Bricks_Count; i++)
-		{
-			if (Active_Bricks[i] != 0)
-				Active_Bricks[i]->Draw(hdc, paint_area);
-		}
+				if (IntersectRect(&intersection_rect, &paint_area, &brick_rect))
+					Draw_Brick(hdc, brick_rect, (EBrick_Type)Current_Level[i][j]);
+			}
+
+		Draw_Graphic_Object(hdc, paint_area, (AGraphics_Objects**)&Active_Bricks, AsConfig::Max_Active_Bricks_Count);
 	}
 
-	//!!! Копия логики!
+	Draw_Graphic_Object(hdc, paint_area, (AGraphics_Objects**)&Falling_Letters, AsConfig::Max_Falling_Letters_Count);
+
+}
+//------------------------------------------------------------------------------------------------------------
+void ALevel::Draw_Graphic_Object(HDC hdc, RECT& paint_area, AGraphics_Objects** graphics_obj_array, int max_obj_count)
+{
+	int i;
+
 	for (i = 0; i < AsConfig::Max_Falling_Letters_Count; i++)
 	{
-		if (Falling_Letters[i] != 0)
-			Falling_Letters[i]->Draw(hdc, paint_area);
+		if (graphics_obj_array[i] != 0)
+			graphics_obj_array[i]->Draw(hdc, paint_area);
 	}
 }
 //------------------------------------------------------------------------------------------------------------
@@ -519,7 +522,7 @@ bool ALevel::Check_Horizontal_Hit(double next_x_pos, double next_y_pos, int leve
 	return false;
 }
 //------------------------------------------------------------------------------------------------------------
-void ALevel::Draw_Brick(HDC hdc, int x, int y, EBrick_Type brick_type)
+void ALevel::Draw_Brick(HDC hdc, RECT &brick_rect, EBrick_Type brick_type)
 {// Вывод "кирпича"
 
 	HPEN pen;
@@ -549,6 +552,6 @@ void ALevel::Draw_Brick(HDC hdc, int x, int y, EBrick_Type brick_type)
 	SelectObject(hdc, pen);
 	SelectObject(hdc, brush);
 
-	RoundRect(hdc, x * AsConfig::Global_Scale, y * AsConfig::Global_Scale, (x + AsConfig::Brick_Width) * AsConfig::Global_Scale - 1, (y + AsConfig::Brick_Height) * AsConfig::Global_Scale - 1, 2 * AsConfig::Global_Scale, 2 * AsConfig::Global_Scale);
+	RoundRect(hdc, brick_rect.left, brick_rect.top, brick_rect.right - 1, brick_rect.bottom - 1, 2 * AsConfig::Global_Scale, 2 * AsConfig::Global_Scale);
 }
 //------------------------------------------------------------------------------------------------------------
