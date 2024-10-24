@@ -1,11 +1,9 @@
 ﻿#pragma once
 
 #include <Windows.h>
-
 #include "Border.h"
 #include "Level.h"
 #include "Platform.h"
-
 //------------------------------------------------------------------------------------------------------------
 enum EKey_Type
 {
