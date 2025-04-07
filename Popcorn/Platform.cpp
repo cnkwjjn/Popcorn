@@ -8,11 +8,26 @@ AsPlatform::~AsPlatform()
 }
 //------------------------------------------------------------------------------------------------------------
 AsPlatform::AsPlatform()
-: X_Pos(AsConfig::Border_X_Offset), X_Step(AsConfig::Global_Scale * 2), Platform_State(EPS_Normal), Inner_Width(Normal_Platform_Inner_Width),
-  Rolling_Step(0), Normal_Platform_Image_Width(0), Normal_Platform_Image_Height(0), Normal_Platform_Image(0),
-  Width(Normal_Width), Platform_Rect{}, Prev_Platform_Rect{}, Highlight_Pen(0), Platform_Circle_Pen(0),
-  Platform_Inner_Pen(0), Platform_Circle_Brush(0), Platform_Inner_Brush(0), Highlight_Pen_Color(255, 255, 255),
-  Platform_Circle_Pen_Color(151, 0, 0), Platform_Inner_Pen_Color(0, 128, 192)
+: X_Pos(AsConfig::Border_X_Offset), 
+X_Step(AsConfig::Global_Scale * 2), 
+Platform_State(EPS_Normal), 
+Inner_Width(Normal_Platform_Inner_Width),
+Rolling_Step(0), 
+Normal_Platform_Image_Width(0), 
+Normal_Platform_Image_Height(0), 
+Normal_Platform_Image(0),
+Meltdown_Platform_Y_Pos(),
+Width(Normal_Width), 
+Platform_Rect{}, 
+Prev_Platform_Rect{}, 
+Highlight_Pen(0), 
+Platform_Circle_Pen(0),
+Platform_Inner_Pen(0), 
+Platform_Circle_Brush(0), 
+Platform_Inner_Brush(0), 
+Highlight_Pen_Color(255, 255, 255),
+Platform_Circle_Pen_Color(151, 0, 0), 
+Platform_Inner_Pen_Color(0, 128, 192)
 {
 	X_Pos = (AsConfig::Max_X_Pos - Width) / 2;
 }
@@ -156,6 +171,32 @@ void AsPlatform::Draw(HDC hdc, RECT &paint_area)
 	}
 }
 //------------------------------------------------------------------------------------------------------------
+void AsPlatform::Move(bool left)
+{
+	if (Platform_State == EPS_Meltdown || Platform_State == EPS_Roll_In)
+		return;
+
+	if (left)
+	{
+		X_Pos -= X_Step;
+
+		if (X_Pos <= AsConfig::Border_X_Offset)
+			X_Pos = AsConfig::Border_X_Offset;
+
+		Redraw_Platform();
+	}
+
+	else
+	{
+		X_Pos += X_Step;
+
+		if (X_Pos >= AsConfig::Max_X_Pos - Width + 1)
+			X_Pos = AsConfig::Max_X_Pos - Width + 1;
+
+		Redraw_Platform();
+	}
+}
+//------------------------------------------------------------------------------------------------------------
 void AsPlatform::Clear_BG(HDC hdc)
 {// Очищаем фоном прежнее место
 
@@ -226,7 +267,6 @@ void AsPlatform::Draw_Meltdown_State(HDC hdc, RECT &paint_area)
 	int moved_columns_count = 0;
 	int max_platform_y;
 	HPEN color_pen;
-	COLORREF pixel;
 	COLORREF bg_pixel = RGB(AsConfig::BG_Color.R, AsConfig::BG_Color.G, AsConfig::BG_Color.B);
 
 	max_platform_y = (AsConfig::Max_Y_Pos + 1) * AsConfig::Global_Scale;

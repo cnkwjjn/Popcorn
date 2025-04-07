@@ -10,6 +10,13 @@ AsEngine::AsEngine()
 void AsEngine::Init_Engine(HWND hwnd)
 {// Настройка игры при старте
 
+	SYSTEMTIME systemtime;
+	FILETIME filetime;
+
+	GetSystemTime(&systemtime);
+	SystemTimeToFileTime(&systemtime, &filetime);
+	srand(filetime.dwLowDateTime);
+
 	AsConfig::Hwnd = hwnd;
 
 	AActive_Brick::Setup_Colors();
@@ -72,32 +79,15 @@ void AsEngine::Draw_Frame(HDC hdc, RECT &paint_area)
 //------------------------------------------------------------------------------------------------------------
 int AsEngine::On_Key_Down(EKey_Type key_type)
 {
-	if (Platform.Get_State() == EPS_Meltdown || Platform.Get_State() == EPS_Roll_In )
-		return 0;
-
 	switch (key_type)
 	{
 	case EKT_Left:
-
-
-		Platform.X_Pos -= Platform.X_Step;
-
-		if (Platform.X_Pos <= AsConfig::Border_X_Offset)
-			Platform.X_Pos = AsConfig::Border_X_Offset;
-
-		Platform.Redraw_Platform();
+		Platform.Move(true);
 		break;
-
 
 	case EKT_Right:
-		Platform.X_Pos += Platform.X_Step;
-
-		if (Platform.X_Pos >= AsConfig::Max_X_Pos - Platform.Width + 1)
-			Platform.X_Pos = AsConfig::Max_X_Pos - Platform.Width + 1;
-
-		Platform.Redraw_Platform();
+		Platform.Move(false);
 		break;
-
 
 	case EKT_Space:
 		if (Platform.Get_State() == EPS_Ready)
@@ -154,12 +144,29 @@ int AsEngine::On_Timer()
 		}
 		break;
 	}
-
-	Platform.Act();
-	Level.Act();
-
-	//if (AsConfig::Current_Timer_Tick % 10 == 0)
+	
+	Act();
 
 	return 0;
 }
 //------------------------------------------------------------------------------------------------------------
+void AsEngine::Act()
+{
+	AFalling_Letter* falling_letter;
+	int index = 0;
+
+	//while (Level.Get_Falling_Letter(index, &falling_letter))
+	//{
+	//	if (Platform.Hit_By(falling_letter))
+	//}
+
+	Platform.Act();
+	Level.Act();
+}
+//------------------------------------------------------------------------------------------------------------
+void AsEngine::On_Falling_Letter(AFalling_Letter* falling_letter)
+{
+	falling_letter->Got_Hit = true;
+}
+//------------------------------------------------------------------------------------------------------------
+
